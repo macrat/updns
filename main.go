@@ -11,22 +11,28 @@ import (
 )
 
 var (
-	targetDomain  = "blanktar.jp"
 	ipcheckServer = "http://ipcheck.ieserver.net"
+	targetDomain  = "target.domain"
+	masterID      = "master ID of MyDNS"
+	password      = "password of MyDNS"
 )
 
 type Reporter interface {
 	CurrentAddress(address string)
 	RealAddress(address string)
 	FailedToGetRealAddress(message string)
+	Updated()
+	FailedToUpdate(message string)
 }
 
 type LogReporter struct {
 	logger log.Logger
 }
 
-func NewLogReporter() LogReporter {
-	return LogReporter{log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))}
+func NewLogReporter(targetDomain string) LogReporter {
+	logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
+	logger.Log("level", "info", "target_domain", targetDomain)
+	return LogReporter{logger}
 }
 
 func (reporter LogReporter) CurrentAddress(address string) {
@@ -38,7 +44,43 @@ func (reporter LogReporter) RealAddress(address string) {
 }
 
 func (reporter LogReporter) FailedToGetRealAddress(message string) {
-	reporter.logger.Log("level", "fatal", "message", message)
+	reporter.logger.Log("level", "fatal", "error", "failed to get real IP address", "message", message)
+}
+
+func (reporter LogReporter) Updated() {
+	reporter.logger.Log("level", "info", "message", "updated")
+}
+
+func (reporter LogReporter) FailedToUpdate(message string) {
+	reporter.logger.Log("level", "fatal", "error", "failed to update", "message", message)
+}
+
+type DNSServer interface {
+	Update(address string) error
+}
+
+type MyDNSServer struct {
+	domain   string
+	masterID string
+	password string
+}
+
+func NewMyDNSServer(domain, masterID, password string) DNSServer {
+	return MyDNSServer{domain, masterID, password}
+}
+
+func (mydns MyDNSServer) Update(address string) error {
+	req, err := http.NewRequest("GET", "https://www.mydns.jp/login.html", nil)
+	if err != nil {
+		return err
+	}
+
+	req.SetBasicAuth(mydns.masterID, mydns.password)
+
+	client := &http.Client{}
+	_, err = client.Do(req)
+
+	return err
 }
 
 func GetCurrentAddress(domain string) (address string, err error) {
@@ -65,7 +107,7 @@ func GetRealAddress(ipcheckServer string) (address string, err error) {
 }
 
 func main() {
-	var reporter Reporter = NewLogReporter()
+	var reporter Reporter = NewLogReporter(targetDomain)
 
 	currentAddress, _ := GetCurrentAddress(targetDomain)
 	reporter.CurrentAddress(currentAddress)
@@ -77,4 +119,13 @@ func main() {
 	}
 
 	reporter.RealAddress(realAddress)
+
+	if currentAddress != realAddress {
+		dnsserver := NewMyDNSServer(targetDomain, masterID, password)
+		if err := dnsserver.Update(realAddress); err != nil {
+			reporter.FailedToUpdate(err.Error())
+		} else {
+			reporter.Updated()
+		}
+	}
 }
