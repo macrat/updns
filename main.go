@@ -1,11 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/bogdanovich/dns_resolver"
 	"github.com/go-kit/kit/log"
@@ -16,14 +18,17 @@ var (
 	targetDomain  = "target.domain"
 	masterID      = "master ID of MyDNS"
 	password      = "password of MyDNS"
+	statusFile    = "/var/lib/updns.json"
 )
 
 type Reporter interface {
+	FailedToLoadStatusInfo(reason string)
 	CurrentAddress(address string)
 	RealAddress(address string)
-	FailedToGetRealAddress(message string)
-	Updated()
-	FailedToUpdate(message string)
+	FailedToGetRealAddress(reason string)
+	Updated(timestamp time.Time)
+	FailedToUpdate(reason string)
+	FailedToSaveStatusInfo(reason string)
 }
 
 type LogReporter struct {
@@ -34,6 +39,10 @@ func NewLogReporter(targetDomain string) LogReporter {
 	logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
 	logger.Log("level", "info", "target_domain", targetDomain)
 	return LogReporter{logger}
+}
+
+func (reporter LogReporter) FailedToLoadStatusInfo(reason string) {
+	reporter.logger.Log("level", "error", "error", "failed to load status info", "reason", reason)
 }
 
 func (reporter LogReporter) CurrentAddress(address string) {
@@ -48,12 +57,16 @@ func (reporter LogReporter) FailedToGetRealAddress(reason string) {
 	reporter.logger.Log("level", "fatal", "error", "failed to get real IP address", "reason", reason)
 }
 
-func (reporter LogReporter) Updated() {
-	reporter.logger.Log("level", "info", "message", "updated")
+func (reporter LogReporter) Updated(timestamp time.Time) {
+	reporter.logger.Log("level", "info", "message", "updated", "time", timestamp)
 }
 
 func (reporter LogReporter) FailedToUpdate(reason string) {
 	reporter.logger.Log("level", "fatal", "error", "failed to update", "reason", reason)
+}
+
+func (reporter LogReporter) FailedToSaveStatusInfo(reason string) {
+	reporter.logger.Log("level", "error", "error", "failed to save status info", "reason", reason)
 }
 
 type DNSServer interface {
@@ -91,6 +104,38 @@ func (mydns MyDNSServer) Update(address string) error {
 	}
 }
 
+type StatusInfo struct {
+	path        string
+	LastUpdated time.Time `json:"last_updated"`
+}
+
+func LoadOrMakeStatusInfo(path string) (info *StatusInfo, err error) {
+	info = new(StatusInfo)
+	info.path = path
+
+	bytes, err := ioutil.ReadFile(path)
+	if err == nil {
+		err = json.Unmarshal(bytes, &info)
+	} else if os.IsNotExist(err) {
+		err = nil
+	}
+
+	return
+}
+
+func (info *StatusInfo) Save() error {
+	bytes, err := json.Marshal(info)
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(info.path, bytes, 0644)
+}
+
+func (info *StatusInfo) Updated() {
+	info.LastUpdated = time.Now()
+}
+
 func GetCurrentAddress(domain string) (address string, err error) {
 	resolver := dns_resolver.New([]string{"8.8.8.8", "4.4.4.4"})
 	if addrs, err := resolver.LookupHost(domain); err == nil {
@@ -117,6 +162,11 @@ func GetRealAddress(ipcheckServer string) (address string, err error) {
 func main() {
 	var reporter Reporter = NewLogReporter(targetDomain)
 
+	info, err := LoadOrMakeStatusInfo(statusFile)
+	if err != nil {
+		reporter.FailedToLoadStatusInfo(err.Error())
+	}
+
 	currentAddress, _ := GetCurrentAddress(targetDomain)
 	reporter.CurrentAddress(currentAddress)
 
@@ -130,10 +180,17 @@ func main() {
 
 	if currentAddress != realAddress {
 		dnsserver := NewMyDNSServer(targetDomain, masterID, password)
-		if err := dnsserver.Update(realAddress); err != nil {
+		if err = dnsserver.Update(realAddress); err != nil {
 			reporter.FailedToUpdate(err.Error())
-		} else {
-			reporter.Updated()
+			os.Exit(1)
 		}
+
+		info.Updated()
+
+		if err = info.Save(); err != nil {
+			reporter.FailedToSaveStatusInfo(err.Error())
+		}
+
+		reporter.Updated(info.LastUpdated)
 	}
 }
