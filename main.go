@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -43,16 +44,16 @@ func (reporter LogReporter) RealAddress(address string) {
 	reporter.logger.Log("level", "info", "real_address", address)
 }
 
-func (reporter LogReporter) FailedToGetRealAddress(message string) {
-	reporter.logger.Log("level", "fatal", "error", "failed to get real IP address", "message", message)
+func (reporter LogReporter) FailedToGetRealAddress(reason string) {
+	reporter.logger.Log("level", "fatal", "error", "failed to get real IP address", "reason", reason)
 }
 
 func (reporter LogReporter) Updated() {
 	reporter.logger.Log("level", "info", "message", "updated")
 }
 
-func (reporter LogReporter) FailedToUpdate(message string) {
-	reporter.logger.Log("level", "fatal", "error", "failed to update", "message", message)
+func (reporter LogReporter) FailedToUpdate(reason string) {
+	reporter.logger.Log("level", "fatal", "error", "failed to update", "reason", reason)
 }
 
 type DNSServer interface {
@@ -78,9 +79,16 @@ func (mydns MyDNSServer) Update(address string) error {
 	req.SetBasicAuth(mydns.masterID, mydns.password)
 
 	client := &http.Client{}
-	_, err = client.Do(req)
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
 
-	return err
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("failed to authorization")
+	} else {
+		return nil
+	}
 }
 
 func GetCurrentAddress(domain string) (address string, err error) {
