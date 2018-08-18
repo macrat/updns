@@ -16,6 +16,7 @@ type Reporter interface {
 	Updated(timestamp time.Time, takenTime time.Duration)
 	FailedToUpdate(reason string)
 	FailedToSaveStatusInfo(reason string)
+	Done(info *StatusInfo)
 }
 
 type LogReporter struct {
@@ -58,4 +59,7 @@ func (reporter LogReporter) FailedToUpdate(reason string) {
 
 func (reporter LogReporter) FailedToSaveStatusInfo(reason string) {
 	reporter.logger.Log("level", "error", "error", "failed to save status info", "reason", reason)
+}
+
+func (reporter LogReporter) Done(info *StatusInfo) {
 }

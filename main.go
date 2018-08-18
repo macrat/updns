@@ -23,19 +23,33 @@ func main() {
 
 	info, err := LoadOrMakeStatusInfo(*statusFile, *targetDomain)
 	if err != nil {
+		info.MinorErrorCount++
 		reporter.FailedToLoadStatusInfo(err.Error())
 	}
+	info.ExecutedCount++
+
+	defer func() {
+		if err = info.Save(); err != nil {
+			info.MinorErrorCount++
+			reporter.FailedToSaveStatusInfo(err.Error())
+		}
+		reporter.Done(info)
+	}()
 
 	reporter.LastUpdated(info.LastUpdated)
 
 	stime := time.Now()
-	currentAddress, _ := GetCurrentAddress(*targetDomain)
+	currentAddress, err := GetCurrentAddress(*targetDomain)
+	if err != nil {
+		info.MinorErrorCount++
+	}
 	reporter.CurrentAddress(currentAddress, time.Now().Sub(stime))
 
 	stime = time.Now()
 	realAddress, err := GetRealAddress(*ipcheckServer)
 	etime := time.Now()
 	if realAddress == "unknown" {
+		info.FatalErrorCount++
 		reporter.FailedToGetRealAddress(err.Error())
 		os.Exit(1)
 	}
@@ -49,15 +63,12 @@ func main() {
 		err = dnsserver.Update(realAddress)
 		etime = time.Now()
 		if err != nil {
+			info.FatalErrorCount++
 			reporter.FailedToUpdate(err.Error())
 			os.Exit(1)
 		}
 
 		info.Updated()
-
-		if err = info.Save(); err != nil {
-			reporter.FailedToSaveStatusInfo(err.Error())
-		}
 
 		reporter.Updated(info.LastUpdated, etime.Sub(stime))
 	}

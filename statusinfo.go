@@ -8,9 +8,12 @@ import (
 )
 
 type StatusInfo struct {
-	path        string
-	domain      string
-	LastUpdated time.Time `json:"last_updated"`
+	path            string
+	domain          string
+	LastUpdated     time.Time `json:"last_updated"`
+	MinorErrorCount int
+	FatalErrorCount int
+	ExecutedCount   int
 }
 
 type StatusInfoFile map[string]StatusInfo
