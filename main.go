@@ -15,6 +15,7 @@ var (
 	password      = kingpin.Arg("password", "password for login to MyDNS.").Required().String()
 	statusFile    = kingpin.Flag("status-file", "file for storing status information.").Default("/var/lib/updns.json").String()
 	interval      = kingpin.Flag("interval", "update interval when IP address does not updated.").Short('i').Default("24h").Duration()
+	prometheusServer = kingpin.Flag("prometheus-push-gateway", "prometheus push gateway server address for sending metrics").Short('p').URL()
 )
 
 func main() {
@@ -33,6 +34,8 @@ func main() {
 	}
 	info.ExecutedCount++
 
+	metrics := NewMetrics(info)
+
 	logger.WithFields(log.Fields{
 		"last_updated": info.LastUpdated,
 		"file_path": *statusFile,
@@ -45,6 +48,19 @@ func main() {
 				"reason": err.Error(),
 			}).Error("failed to save status info")
 		}
+
+		if *prometheusServer != nil {
+			if err = PushToPrometheus(*prometheusServer, metrics); err != nil {
+				logger.WithFields(log.Fields{
+					"pushgateway": *prometheusServer,
+					"reason": err.Error(),
+				}).Info("failed to reporting into prometheus")
+			} else {
+				logger.WithFields(log.Fields{
+					"pushgateway": *prometheusServer,
+				}).Info("reported to prometheus")
+			}
+		}
 	}()
 
 	stime := time.Now()
@@ -56,6 +72,7 @@ func main() {
 			"taken": etime.Sub(stime),
 		}).Info("failed to get current address")
 	}
+	metrics.CurrentAddressTakenTime = etime.Sub(stime)
 	logger.WithFields(log.Fields{
 		"taken": etime.Sub(stime),
 		"current_address": currentAddress,
@@ -71,6 +88,7 @@ func main() {
 		}).Fatal("failed to get real address")
 		os.Exit(1)
 	}
+	metrics.RealAddressTakenTime = etime.Sub(stime)
 	logger.WithFields(log.Fields{
 		"taken": etime.Sub(stime),
 		"real_address": realAddress,
