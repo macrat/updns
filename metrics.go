@@ -103,5 +103,5 @@ func PushToPrometheus(server *url.URL, metrics *Metrics) error {
 	fatalErrorCount.Add(float64(metrics.MinorErrorCount))
 	gateway.Collector(fatalErrorCount)
 
-	return gateway.Push()
+	return gateway.Add()
 }
