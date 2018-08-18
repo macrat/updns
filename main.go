@@ -28,20 +28,27 @@ func main() {
 
 	reporter.LastUpdated(info.LastUpdated)
 
+	stime := time.Now()
 	currentAddress, _ := GetCurrentAddress(*targetDomain)
-	reporter.CurrentAddress(currentAddress)
+	reporter.CurrentAddress(currentAddress, time.Now().Sub(stime))
 
+	stime = time.Now()
 	realAddress, err := GetRealAddress(*ipcheckServer)
+	etime := time.Now()
 	if realAddress == "unknown" {
 		reporter.FailedToGetRealAddress(err.Error())
 		os.Exit(1)
 	}
 
-	reporter.RealAddress(realAddress)
+	reporter.RealAddress(realAddress, etime.Sub(stime))
 
 	if currentAddress != realAddress || info.LastUpdated.Add(*interval).Before(time.Now()) {
 		var dnsserver DNSServer = NewMyDNSServer(*targetDomain, *masterID, *password)
-		if err = dnsserver.Update(realAddress); err != nil {
+
+		stime = time.Now()
+		err = dnsserver.Update(realAddress)
+		etime = time.Now()
+		if err != nil {
 			reporter.FailedToUpdate(err.Error())
 			os.Exit(1)
 		}
@@ -52,6 +59,6 @@ func main() {
 			reporter.FailedToSaveStatusInfo(err.Error())
 		}
 
-		reporter.Updated(info.LastUpdated)
+		reporter.Updated(info.LastUpdated, etime.Sub(stime))
 	}
 }

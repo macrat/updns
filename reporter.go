@@ -10,10 +10,10 @@ import (
 type Reporter interface {
 	FailedToLoadStatusInfo(reason string)
 	LastUpdated(timestamp time.Time)
-	CurrentAddress(address string)
-	RealAddress(address string)
+	CurrentAddress(address string, takenTime time.Duration)
+	RealAddress(address string, takenTime time.Duration)
 	FailedToGetRealAddress(reason string)
-	Updated(timestamp time.Time)
+	Updated(timestamp time.Time, takenTime time.Duration)
 	FailedToUpdate(reason string)
 	FailedToSaveStatusInfo(reason string)
 }
@@ -36,20 +36,20 @@ func (reporter LogReporter) LastUpdated(timestamp time.Time) {
 	reporter.logger.Log("level", "info", "last_updated", timestamp, "now", time.Now())
 }
 
-func (reporter LogReporter) CurrentAddress(address string) {
-	reporter.logger.Log("level", "info", "current_address", address)
+func (reporter LogReporter) CurrentAddress(address string, takenTime time.Duration) {
+	reporter.logger.Log("level", "info", "current_address", address, "taken_time", takenTime)
 }
 
-func (reporter LogReporter) RealAddress(address string) {
-	reporter.logger.Log("level", "info", "real_address", address)
+func (reporter LogReporter) RealAddress(address string, takenTime time.Duration) {
+	reporter.logger.Log("level", "info", "real_address", address, "taken_time", takenTime)
 }
 
 func (reporter LogReporter) FailedToGetRealAddress(reason string) {
 	reporter.logger.Log("level", "fatal", "error", "failed to get real IP address", "reason", reason)
 }
 
-func (reporter LogReporter) Updated(timestamp time.Time) {
-	reporter.logger.Log("level", "info", "message", "updated", "time", timestamp)
+func (reporter LogReporter) Updated(timestamp time.Time, takenTime time.Duration) {
+	reporter.logger.Log("level", "info", "message", "updated", "time", timestamp, "taken_time", takenTime)
 }
 
 func (reporter LogReporter) FailedToUpdate(reason string) {
