@@ -3,6 +3,7 @@ package main
 import (
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/bogdanovich/dns_resolver"
@@ -17,8 +18,8 @@ func GetCurrentAddress(domain string) (address string, err error) {
 	}
 }
 
-func GetRealAddress(ipcheckServer string) (address string, err error) {
-	resp, err := http.Get(ipcheckServer)
+func GetRealAddress(ipcheckServer *url.URL) (address string, err error) {
+	resp, err := http.Get(ipcheckServer.String())
 	if err != nil {
 		return "unknown", err
 	}
