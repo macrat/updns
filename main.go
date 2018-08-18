@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"time"
 )
 
 var (
@@ -10,6 +11,7 @@ var (
 	masterID      = "master ID of MyDNS"
 	password      = "password of MyDNS"
 	statusFile    = "/var/lib/updns.json"
+	interval      = time.Hour * 24
 )
 
 func main() {
@@ -19,6 +21,8 @@ func main() {
 	if err != nil {
 		reporter.FailedToLoadStatusInfo(err.Error())
 	}
+
+	reporter.LastUpdated(info.LastUpdated)
 
 	currentAddress, _ := GetCurrentAddress(targetDomain)
 	reporter.CurrentAddress(currentAddress)
@@ -31,7 +35,7 @@ func main() {
 
 	reporter.RealAddress(realAddress)
 
-	if currentAddress != realAddress {
+	if currentAddress != realAddress || info.LastUpdated.Add(interval).Before(time.Now()) {
 		var dnsserver DNSServer = NewMyDNSServer(targetDomain, masterID, password)
 		if err = dnsserver.Update(realAddress); err != nil {
 			reporter.FailedToUpdate(err.Error())

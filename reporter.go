@@ -9,6 +9,7 @@ import (
 
 type Reporter interface {
 	FailedToLoadStatusInfo(reason string)
+	LastUpdated(timestamp time.Time)
 	CurrentAddress(address string)
 	RealAddress(address string)
 	FailedToGetRealAddress(reason string)
@@ -29,6 +30,10 @@ func NewLogReporter(targetDomain string) LogReporter {
 
 func (reporter LogReporter) FailedToLoadStatusInfo(reason string) {
 	reporter.logger.Log("level", "error", "error", "failed to load status info", "reason", reason)
+}
+
+func (reporter LogReporter) LastUpdated(timestamp time.Time) {
+	reporter.logger.Log("level", "info", "last_updated", timestamp, "now", time.Now())
 }
 
 func (reporter LogReporter) CurrentAddress(address string) {
