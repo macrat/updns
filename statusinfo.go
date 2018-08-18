@@ -12,6 +12,7 @@ type StatusInfo struct {
 	domain          string
 	LastUpdated     time.Time `json:"last_updated"`
 	ExecutedCount   int       `json:"executed_count"`
+	UpdatedCount    int       `json:"updated_count"`
 	MinorErrorCount int       `json:"minor_error_count"`
 	FatalErrorCount int       `json:"fatal_error_count"`
 }
@@ -64,4 +65,5 @@ func (info *StatusInfo) Save() error {
 
 func (info *StatusInfo) Updated() {
 	info.LastUpdated = time.Now()
+	info.UpdatedCount++
 }
