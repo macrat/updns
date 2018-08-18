@@ -64,7 +64,7 @@ func PushToPrometheus(server *url.URL, metrics *Metrics) error {
 
 	lastUpdated := prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: "updns",
-		Name: "last_updated_timestamp",
+		Name: "last_updated_timestamp_seconds",
 		ConstLabels: prometheus.Labels{
 			"domain": metrics.domain,
 		},
