@@ -13,6 +13,7 @@ type Metrics struct {
 
 	CurrentAddressTakenTime time.Duration
 	RealAddressTakenTime    time.Duration
+	UpdateTakenTime         time.Duration
 }
 
 func NewMetrics(info *StatusInfo) *Metrics {
@@ -22,27 +23,44 @@ func NewMetrics(info *StatusInfo) *Metrics {
 func PushToPrometheus(server *url.URL, metrics *Metrics) error {
 	gateway := push.New(server.String(), "updns")
 
-	currentAddress := prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "updns",
-		Name: "current_address_get_seconds",
-		ConstLabels: prometheus.Labels{
-			"domain": metrics.domain,
-		},
-		Help: "time taken to obtain the current address that set into DNS server.",
-	})
-	currentAddress.Set(metrics.CurrentAddressTakenTime.Seconds())
-	gateway.Collector(currentAddress)
+	if metrics.CurrentAddressTakenTime.Seconds() > 0 {
+		currentAddress := prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: "updns",
+			Name: "current_address_get_seconds",
+			ConstLabels: prometheus.Labels{
+				"domain": metrics.domain,
+			},
+			Help: "time taken to obtain the current address that set into DNS server.",
+		})
+		currentAddress.Set(metrics.CurrentAddressTakenTime.Seconds())
+		gateway.Collector(currentAddress)
+	}
 
-	realAddress := prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "updns",
-		Name: "real_address_get_seconds",
-		ConstLabels: prometheus.Labels{
-			"domain": metrics.domain,
-		},
-		Help: "time taken to obtain the real IP address.",
-	})
-	realAddress.Set(metrics.RealAddressTakenTime.Seconds())
-	gateway.Collector(realAddress)
+	if metrics.RealAddressTakenTime.Seconds() > 0 {
+		realAddress := prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: "updns",
+			Name: "real_address_get_seconds",
+			ConstLabels: prometheus.Labels{
+				"domain": metrics.domain,
+			},
+			Help: "time taken to obtain the real IP address.",
+		})
+		realAddress.Set(metrics.RealAddressTakenTime.Seconds())
+		gateway.Collector(realAddress)
+	}
+
+	if metrics.UpdateTakenTime.Seconds() > 0 {
+		update := prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: "updns",
+			Name: "record_update_seconds",
+			ConstLabels: prometheus.Labels{
+				"domain": metrics.domain,
+			},
+			Help: "time taken to updating DNS record.",
+		})
+		update.Set(metrics.UpdateTakenTime.Seconds())
+		gateway.Collector(update)
+	}
 
 	lastUpdated := prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: "updns",

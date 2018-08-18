@@ -108,6 +108,7 @@ func main() {
 			}).Fatal("failed to update")
 			os.Exit(1)
 		}
+		metrics.UpdateTakenTime = etime.Sub(stime)
 
 		info.Updated()
 
