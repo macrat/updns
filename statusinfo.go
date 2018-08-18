@@ -9,13 +9,13 @@ import (
 
 type StatusInfo struct {
 	path        string
+	domain      string
 	LastUpdated time.Time `json:"last_updated"`
 }
 
-func LoadOrMakeStatusInfo(path string) (info *StatusInfo, err error) {
-	info = new(StatusInfo)
-	info.path = path
+type StatusInfoFile map[string]StatusInfo
 
+func LoadStatusInfoFile(path string) (info StatusInfoFile, err error) {
 	bytes, err := ioutil.ReadFile(path)
 	if err == nil {
 		err = json.Unmarshal(bytes, &info)
@@ -23,11 +23,35 @@ func LoadOrMakeStatusInfo(path string) (info *StatusInfo, err error) {
 		err = nil
 	}
 
-	return
+	return info, err
+}
+
+func LoadOrMakeStatusInfo(path, domain string) (info *StatusInfo, err error) {
+	raw, err := LoadStatusInfoFile(path)
+	if err != nil {
+		return &StatusInfo{path: path, domain: domain}, err
+	}
+
+	i := raw[domain]
+	info = &i
+	info.path = path
+	info.domain = domain
+
+	return info, nil
 }
 
 func (info *StatusInfo) Save() error {
-	bytes, err := json.Marshal(info)
+	data, err := LoadStatusInfoFile(info.path)
+	if err != nil {
+		return err
+	}
+	if data == nil {
+		data = make(StatusInfoFile)
+	}
+
+	data[info.domain] = *info
+
+	bytes, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}

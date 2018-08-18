@@ -21,7 +21,7 @@ func main() {
 
 	var reporter Reporter = NewLogReporter(*targetDomain)
 
-	info, err := LoadOrMakeStatusInfo(*statusFile)
+	info, err := LoadOrMakeStatusInfo(*statusFile, *targetDomain)
 	if err != nil {
 		reporter.FailedToLoadStatusInfo(err.Error())
 	}
