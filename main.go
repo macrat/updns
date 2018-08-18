@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/alecthomas/kingpin"
+	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -19,42 +20,61 @@ var (
 func main() {
 	kingpin.Parse()
 
-	var reporter Reporter = NewLogReporter(*targetDomain)
+	logger := log.WithFields(log.Fields{
+		"domain": *targetDomain,
+	})
 
 	info, err := LoadOrMakeStatusInfo(*statusFile, *targetDomain)
 	if err != nil {
 		info.MinorErrorCount++
-		reporter.FailedToLoadStatusInfo(err.Error())
+		logger.WithFields(log.Fields{
+			"reason": err.Error(),
+		}).Error("failed to load status info")
 	}
 	info.ExecutedCount++
+
+	logger.WithFields(log.Fields{
+		"last_updated": info.LastUpdated,
+		"file_path": *statusFile,
+	}).Info("loaded status info")
 
 	defer func() {
 		if err = info.Save(); err != nil {
 			info.MinorErrorCount++
-			reporter.FailedToSaveStatusInfo(err.Error())
+			logger.WithFields(log.Fields{
+				"reason": err.Error(),
+			}).Error("failed to save status info")
 		}
-		reporter.Done(info)
 	}()
-
-	reporter.LastUpdated(info.LastUpdated)
 
 	stime := time.Now()
 	currentAddress, err := GetCurrentAddress(*targetDomain)
+	etime := time.Now()
 	if err != nil {
 		info.MinorErrorCount++
+		logger.WithFields(log.Fields{
+			"taken": etime.Sub(stime),
+		}).Info("failed to get current address")
 	}
-	reporter.CurrentAddress(currentAddress, time.Now().Sub(stime))
+	logger.WithFields(log.Fields{
+		"taken": etime.Sub(stime),
+		"current_address": currentAddress,
+	}).Info("got current address")
 
 	stime = time.Now()
 	realAddress, err := GetRealAddress(*ipcheckServer)
-	etime := time.Now()
+	etime = time.Now()
 	if realAddress == "unknown" {
 		info.FatalErrorCount++
-		reporter.FailedToGetRealAddress(err.Error())
+		logger.WithFields(log.Fields{
+			"taken": etime.Sub(stime),
+		}).Fatal("failed to get real address")
 		os.Exit(1)
 	}
-
-	reporter.RealAddress(realAddress, etime.Sub(stime))
+	logger.WithFields(log.Fields{
+		"taken": etime.Sub(stime),
+		"real_address": realAddress,
+	}).Info("got real address")
 
 	if currentAddress != realAddress || info.LastUpdated.Add(*interval).Before(time.Now()) {
 		var dnsserver DNSServer = NewMyDNSServer(*targetDomain, *masterID, *password)
@@ -64,12 +84,18 @@ func main() {
 		etime = time.Now()
 		if err != nil {
 			info.FatalErrorCount++
-			reporter.FailedToUpdate(err.Error())
+			logger.WithFields(log.Fields{
+				"taken": etime.Sub(stime),
+				"reason": err.Error(),
+			}).Fatal("failed to update")
 			os.Exit(1)
 		}
 
 		info.Updated()
 
-		reporter.Updated(info.LastUpdated, etime.Sub(stime))
+		logger.WithFields(log.Fields{
+			"taken": etime.Sub(stime),
+			"timestamp": info.LastUpdated,
+		}).Info("updated")
 	}
 }

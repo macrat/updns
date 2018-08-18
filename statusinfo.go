@@ -11,9 +11,9 @@ type StatusInfo struct {
 	path            string
 	domain          string
 	LastUpdated     time.Time `json:"last_updated"`
-	MinorErrorCount int
-	FatalErrorCount int
-	ExecutedCount   int
+	ExecutedCount   int       `json:"executed_count"`
+	MinorErrorCount int       `json:"minor_error_count"`
+	FatalErrorCount int       `json:"fatal_error_count"`
 }
 
 type StatusInfoFile map[string]StatusInfo
