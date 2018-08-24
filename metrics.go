@@ -1,8 +1,8 @@
 package main
 
 import (
-	"time"
 	"net/url"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/push"
@@ -27,8 +27,8 @@ func PushToPrometheus(server *url.URL, metrics *Metrics) error {
 	if metrics.CurrentAddressTakenTime.Seconds() > 0 {
 		currentAddress := prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: "updns",
-			Name: "current_address_get_seconds",
-			Help: "time taken to obtain the current address that set into DNS server.",
+			Name:      "current_address_get_seconds",
+			Help:      "time taken to obtain the current address that set into DNS server.",
 		})
 		currentAddress.Set(metrics.CurrentAddressTakenTime.Seconds())
 		gateway.Collector(currentAddress)
@@ -37,34 +37,34 @@ func PushToPrometheus(server *url.URL, metrics *Metrics) error {
 	if metrics.RealAddressTakenTime.Seconds() > 0 {
 		realAddress := prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: "updns",
-			Name: "real_address_get_seconds",
-			Help: "time taken to obtain the real IP address.",
+			Name:      "real_address_get_seconds",
+			Help:      "time taken to obtain the real IP address.",
 		})
 		realAddress.Set(metrics.RealAddressTakenTime.Seconds())
 		gateway.Collector(realAddress)
 	}
 
 	if metrics.UpdateTakenTime.Seconds() > 0 {
-		update := prometheus.NewGauge(prometheus.GaugeOpts{
+		update := prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "updns",
-			Name: "record_update_seconds",
-			Help: "time taken to updating DNS record.",
+			Name:      "record_update_seconds",
+			Help:      "time taken to updating DNS record.",
 		})
-		update.Set(metrics.UpdateTakenTime.Seconds())
+		update.Add(metrics.UpdateTakenTime.Seconds())
 		gateway.Collector(update)
 	}
 
-	lastUpdated := prometheus.NewGauge(prometheus.GaugeOpts{
+	lastUpdated := prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: "updns",
-		Name: "last_updated_timestamp_seconds",
-		Help: "DNS record last updated time.",
+		Name:      "last_updated_timestamp_seconds",
+		Help:      "DNS record last updated time.",
 	})
-	lastUpdated.Set(float64(metrics.LastUpdated.Unix()))
+	lastUpdated.Add(float64(metrics.LastUpdated.Unix()))
 	gateway.Collector(lastUpdated)
 
 	updatedCount := prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: "updns",
-		Name: "executed_total",
+		Name:      "executed_total",
 		ConstLabels: prometheus.Labels{
 			"type": "updated",
 		},
@@ -75,7 +75,7 @@ func PushToPrometheus(server *url.URL, metrics *Metrics) error {
 
 	notUpdatedCount := prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: "updns",
-		Name: "executed_total",
+		Name:      "executed_total",
 		ConstLabels: prometheus.Labels{
 			"type": "not-updated",
 		},
@@ -86,7 +86,7 @@ func PushToPrometheus(server *url.URL, metrics *Metrics) error {
 
 	minorErrorCount := prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: "updns",
-		Name: "error_total",
+		Name:      "error_total",
 		ConstLabels: prometheus.Labels{
 			"type": "minor",
 		},
@@ -97,13 +97,13 @@ func PushToPrometheus(server *url.URL, metrics *Metrics) error {
 
 	fatalErrorCount := prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: "updns",
-		Name: "error_total",
+		Name:      "error_total",
 		ConstLabels: prometheus.Labels{
 			"type": "fatal",
 		},
 		Help: "the count that coused errors.",
 	})
-	fatalErrorCount.Add(float64(metrics.MinorErrorCount))
+	fatalErrorCount.Add(float64(metrics.FatalErrorCount))
 	gateway.Collector(fatalErrorCount)
 
 	return gateway.Add()

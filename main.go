@@ -9,12 +9,12 @@ import (
 )
 
 var (
-	ipcheckServer = kingpin.Flag("ipcheck-server", "http server for checking global IP address.").Default("http://ipcheck.ieserver.net").URL()
-	targetDomain  = kingpin.Arg("domain", "the domain for updating.").Required().String()
-	masterID      = kingpin.Arg("master-id", "master ID for login to MyDNS.").Required().String()
-	password      = kingpin.Arg("password", "password for login to MyDNS.").Required().String()
-	statusFile    = kingpin.Flag("status-file", "file for storing status information.").Default("/var/lib/updns.json").String()
-	interval      = kingpin.Flag("interval", "update interval when IP address does not updated.").Short('i').Default("24h").Duration()
+	ipcheckServer    = kingpin.Flag("ipcheck-server", "http server for checking global IP address.").Default("http://ipcheck.ieserver.net").URL()
+	targetDomain     = kingpin.Arg("domain", "the domain for updating.").Required().String()
+	masterID         = kingpin.Arg("master-id", "master ID for login to MyDNS.").Required().String()
+	password         = kingpin.Arg("password", "password for login to MyDNS.").Required().String()
+	statusFile       = kingpin.Flag("status-file", "file for storing status information.").Default("/var/lib/updns.json").String()
+	interval         = kingpin.Flag("interval", "update interval when IP address does not updated.").Short('i').Default("24h").Duration()
 	prometheusServer = kingpin.Flag("prometheus-push-gateway", "prometheus push gateway server address for sending metrics").Short('p').URL()
 )
 
@@ -38,7 +38,7 @@ func main() {
 
 	logger.WithFields(log.Fields{
 		"last_updated": info.LastUpdated,
-		"file_path": *statusFile,
+		"file_path":    *statusFile,
 	}).Info("loaded status info")
 
 	defer func() {
@@ -53,7 +53,7 @@ func main() {
 			if err = PushToPrometheus(*prometheusServer, metrics); err != nil {
 				logger.WithFields(log.Fields{
 					"pushgateway": *prometheusServer,
-					"reason": err.Error(),
+					"reason":      err.Error(),
 				}).Info("failed to reporting into prometheus")
 			} else {
 				logger.WithFields(log.Fields{
@@ -74,7 +74,7 @@ func main() {
 	}
 	metrics.CurrentAddressTakenTime = etime.Sub(stime)
 	logger.WithFields(log.Fields{
-		"taken": etime.Sub(stime),
+		"taken":           etime.Sub(stime),
 		"current_address": currentAddress,
 	}).Info("got current address")
 
@@ -90,7 +90,7 @@ func main() {
 	}
 	metrics.RealAddressTakenTime = etime.Sub(stime)
 	logger.WithFields(log.Fields{
-		"taken": etime.Sub(stime),
+		"taken":        etime.Sub(stime),
 		"real_address": realAddress,
 	}).Info("got real address")
 
@@ -103,7 +103,7 @@ func main() {
 		if err != nil {
 			info.FatalErrorCount++
 			logger.WithFields(log.Fields{
-				"taken": etime.Sub(stime),
+				"taken":  etime.Sub(stime),
 				"reason": err.Error(),
 			}).Fatal("failed to update")
 			os.Exit(1)
@@ -113,7 +113,7 @@ func main() {
 		info.Updated()
 
 		logger.WithFields(log.Fields{
-			"taken": etime.Sub(stime),
+			"taken":     etime.Sub(stime),
 			"timestamp": info.LastUpdated,
 		}).Info("updated")
 	}
