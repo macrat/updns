@@ -15,17 +15,17 @@ var (
 	password         = kingpin.Arg("password", "password for login to MyDNS.").Required().String()
 	statusFile       = kingpin.Flag("status-file", "file for storing status information.").Default("/var/lib/updns.json").String()
 	interval         = kingpin.Flag("interval", "update interval when IP address does not updated.").Short('i').Default("24h").Duration()
-	prometheusServer = kingpin.Flag("prometheus-push-gateway", "prometheus push gateway server address for sending metrics").Short('p').URL()
-	level            = kingpin.Flag("log-level", "Output log level. Choose one from WARN, INFO, WARN, ERROR or FATAL.").Short('l').Default("WARN").Enum("DEBUG", "INFO", "WARN", "ERROR", "FATAL")
+	prometheusServer = kingpin.Flag("prometheus-push-gateway", "prometheus push gateway server address for sending metrics.").Short('p').URL()
+	loggingDriver    = kingpin.Flag("logging-driver", "way to logging. choose one from stdout or fluent.").Default("stdout").Enum("stdout", "fluent")
+	loggingServer    = kingpin.Flag("logging-server", "fluent server address.").Default("localhost:24224").String()
+	level            = kingpin.Flag("log-level", "Output log level. choose one from WARN, INFO, WARN, ERROR or FATAL.").Short('l').Default("WARN").Enum("DEBUG", "INFO", "WARN", "ERROR", "FATAL")
 )
 
 func main() {
 	kingpin.Parse()
 
-	if l, err := log.ParseLevel(*level); err == nil {
-		log.SetLevel(l)
-	}
-	logger := log.WithFields(log.Fields{
+	logLevel, _ := log.ParseLevel(*level)
+	logger := NewLogger(*loggingDriver, *loggingServer, logLevel, log.Fields{
 		"domain": *targetDomain,
 	})
 
@@ -117,10 +117,15 @@ func main() {
 		info.Updated()
 
 		logger.WithFields(log.Fields{
+			"old_address": currentAddress,
+			"new_address": realAddress,
+		}).Info("updated")
+
+		logger.WithFields(log.Fields{
 			"taken":       etime.Sub(stime),
 			"timestamp":   info.LastUpdated,
 			"old_address": currentAddress,
 			"new_address": realAddress,
-		}).Info("updated")
+		}).Debug("updated detail")
 	}
 }
