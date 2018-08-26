@@ -16,11 +16,15 @@ var (
 	statusFile       = kingpin.Flag("status-file", "file for storing status information.").Default("/var/lib/updns.json").String()
 	interval         = kingpin.Flag("interval", "update interval when IP address does not updated.").Short('i').Default("24h").Duration()
 	prometheusServer = kingpin.Flag("prometheus-push-gateway", "prometheus push gateway server address for sending metrics").Short('p').URL()
+	level            = kingpin.Flag("log-level", "Output log level. Choose one from WARN, INFO, WARN, ERROR or FATAL.").Short('l').Default("WARN").Enum("DEBUG", "INFO", "WARN", "ERROR", "FATAL")
 )
 
 func main() {
 	kingpin.Parse()
 
+	if l, err := log.ParseLevel(*level); err == nil {
+		log.SetLevel(l)
+	}
 	logger := log.WithFields(log.Fields{
 		"domain": *targetDomain,
 	})
@@ -30,7 +34,7 @@ func main() {
 		info.MinorErrorCount++
 		logger.WithFields(log.Fields{
 			"reason": err.Error(),
-		}).Error("failed to load status info")
+		}).Warn("failed to load status info")
 	}
 	info.ExecutedCount++
 
@@ -39,7 +43,7 @@ func main() {
 	logger.WithFields(log.Fields{
 		"last_updated": info.LastUpdated,
 		"file_path":    *statusFile,
-	}).Info("loaded status info")
+	}).Debug("loaded status info")
 
 	defer func() {
 		if err = info.Save(); err != nil {
@@ -54,11 +58,11 @@ func main() {
 				logger.WithFields(log.Fields{
 					"pushgateway": *prometheusServer,
 					"reason":      err.Error(),
-				}).Info("failed to reporting into prometheus")
+				}).Error("failed to reporting into prometheus")
 			} else {
 				logger.WithFields(log.Fields{
 					"pushgateway": *prometheusServer,
-				}).Info("reported to prometheus")
+				}).Debug("reported to prometheus")
 			}
 		}
 	}()
@@ -70,13 +74,13 @@ func main() {
 		info.MinorErrorCount++
 		logger.WithFields(log.Fields{
 			"taken": etime.Sub(stime),
-		}).Info("failed to get current address")
+		}).Warn("failed to get current address")
 	}
 	metrics.CurrentAddressTakenTime = etime.Sub(stime)
 	logger.WithFields(log.Fields{
 		"taken":           etime.Sub(stime),
 		"current_address": currentAddress,
-	}).Info("got current address")
+	}).Debug("got current address")
 
 	stime = time.Now()
 	realAddress, err := GetRealAddress(*ipcheckServer)
@@ -92,7 +96,7 @@ func main() {
 	logger.WithFields(log.Fields{
 		"taken":        etime.Sub(stime),
 		"real_address": realAddress,
-	}).Info("got real address")
+	}).Debug("got real address")
 
 	if currentAddress != realAddress || info.LastUpdated.Add(*interval).Before(time.Now()) {
 		var dnsserver DNSServer = NewMyDNSServer(*targetDomain, *masterID, *password)
@@ -113,8 +117,10 @@ func main() {
 		info.Updated()
 
 		logger.WithFields(log.Fields{
-			"taken":     etime.Sub(stime),
-			"timestamp": info.LastUpdated,
+			"taken":       etime.Sub(stime),
+			"timestamp":   info.LastUpdated,
+			"old_address": currentAddress,
+			"new_address": realAddress,
 		}).Info("updated")
 	}
 }
