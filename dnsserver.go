@@ -3,28 +3,27 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 )
 
 type DNSServer interface {
 	Update(address string) error
 }
 
-type MyDNSServer struct {
-	masterID string
+type BasicDNSServer struct {
+	id       string
 	password string
+	endpoint *url.URL
 }
 
-func NewMyDNSServer(masterID, password string) DNSServer {
-	return MyDNSServer{masterID, password}
-}
+func (dns BasicDNSServer) Update(address string) error {
+	req, err := http.NewRequest("GET", dns.endpoint.String(), nil)
 
-func (mydns MyDNSServer) Update(address string) error {
-	req, err := http.NewRequest("GET", "https://www.mydns.jp/login.html", nil)
 	if err != nil {
 		return err
 	}
 
-	req.SetBasicAuth(mydns.masterID, mydns.password)
+	req.SetBasicAuth(dns.masterID, dns.password)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -37,4 +36,15 @@ func (mydns MyDNSServer) Update(address string) error {
 	} else {
 		return nil
 	}
+}
+
+type MyDNSServer BasicDNSServer
+
+func NewMyDNSServer(masterID, password string) DNSServer {
+	return DNSServer{masterID, password, &url.URL{
+		Scheme:  "https",
+		Host:    "www.mydns.jp",
+		Path:    "/login.html",
+		RawPath: "/login.html",
+	}}
 }
