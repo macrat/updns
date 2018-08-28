@@ -99,7 +99,7 @@ func main() {
 	}).Debug("got real address")
 
 	if currentAddress != realAddress || info.LastUpdated.Add(*interval).Before(time.Now()) {
-		var dnsserver DNSServer = NewMyDNSServer(*targetDomain, *masterID, *password)
+		var dnsserver DNSServer = NewMyDNSServer(*masterID, *password)
 
 		stime = time.Now()
 		err = dnsserver.Update(realAddress)

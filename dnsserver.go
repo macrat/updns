@@ -10,13 +10,12 @@ type DNSServer interface {
 }
 
 type MyDNSServer struct {
-	domain   string
 	masterID string
 	password string
 }
 
-func NewMyDNSServer(domain, masterID, password string) DNSServer {
-	return MyDNSServer{domain, masterID, password}
+func NewMyDNSServer(masterID, password string) DNSServer {
+	return MyDNSServer{masterID, password}
 }
 
 func (mydns MyDNSServer) Update(address string) error {
