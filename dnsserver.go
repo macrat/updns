@@ -23,7 +23,7 @@ func (dns BasicDNSServer) Update(address string) error {
 		return err
 	}
 
-	req.SetBasicAuth(dns.masterID, dns.password)
+	req.SetBasicAuth(dns.id, dns.password)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -41,7 +41,7 @@ func (dns BasicDNSServer) Update(address string) error {
 type MyDNSServer BasicDNSServer
 
 func NewMyDNSServer(masterID, password string) DNSServer {
-	return DNSServer{masterID, password, &url.URL{
+	return BasicDNSServer{masterID, password, &url.URL{
 		Scheme:  "https",
 		Host:    "www.mydns.jp",
 		Path:    "/login.html",
